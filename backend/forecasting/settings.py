@@ -28,6 +28,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+CSRF_TRUSTED_ORIGINS = ['https://8000-abcdarl-hivforecastingd-4p274ahpjtp.ws-us67.gitpod.io']
 
 # Application definition
 

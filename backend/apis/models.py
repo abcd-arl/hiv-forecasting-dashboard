@@ -7,6 +7,6 @@ class Case(models.Model):
 
     csv_file = models.FileField(upload_to="csv-files")
     date_uploaded = models.DateTimeField(auto_now_add=True)
-
+    
     def __str__(self):
         return str(self.date_uploaded)
