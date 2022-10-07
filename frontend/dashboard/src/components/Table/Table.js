@@ -66,7 +66,6 @@ const reducer = (state, action) => {
 				values: structuredClone(state.values),
 				finalValues: structuredClone(state.finalValues),
 				isSaved: false,
-				history: state.history,
 				activity: {
 					status: 'updated',
 					startIndex: [null, null],
@@ -74,7 +73,6 @@ const reducer = (state, action) => {
 			};
 
 		case 'save':
-			if (state.finalValues.length) state.history.push(structuredClone(state.finalValues));
 			return {
 				values: structuredClone(state.values),
 				finalValues: structuredClone(state.values),
@@ -102,7 +100,6 @@ export default function Table() {
 		values: [[]],
 		finalValues: [],
 		isSaved: true,
-		history: [],
 		activity: {
 			status: 'standby',
 			startIndex: [],
@@ -112,7 +109,7 @@ export default function Table() {
 
 	useEffect(() => {
 		console.group('Table Values');
-		console.log('history', table.history);
+		// console.log('history', table.history);
 		console.log('initial table values:', table.values);
 		console.log('initial table status:', table.activity.status, table.activity.startIndex);
 		console.log('final table values:', table.finalValues);
@@ -193,12 +190,7 @@ export default function Table() {
 				</thead>
 				<tbody>{tableRows}</tbody>
 			</table>
-			<TableOption
-				dispatch={dispatch}
-				tableIsSaved={table.isSaved}
-				tableStatus={table.activity.status}
-				tableHistory={table.history}
-			/>
+			<TableOption dispatch={dispatch} tableIsSaved={table.isSaved} tableStatus={table.activity.status} />
 		</>
 	);
 }
