@@ -19,6 +19,7 @@ const reducer = (state, action) => {
 				],
 				finalValues: [[]],
 				isSaved: false,
+				history: state.history,
 				activity: {
 					status: 'initialized',
 					startIndex: [0, 0],
@@ -43,6 +44,7 @@ const reducer = (state, action) => {
 				values: tableValues,
 				finalValues: structuredClone(state.finalValues),
 				isSaved: false,
+				history: state.history,
 				activity: {
 					status: 'editing',
 					startIndex: getTableLastIndex(state.values),
@@ -54,6 +56,7 @@ const reducer = (state, action) => {
 				values: structuredClone(state.values),
 				finalValues: structuredClone(state.finalValues),
 				isSaved: false,
+				history: state.history,
 				activity: {
 					status: 'saving',
 					startIndex: state.activity.startIndex,
@@ -66,6 +69,7 @@ const reducer = (state, action) => {
 				values: structuredClone(state.values),
 				finalValues: structuredClone(state.finalValues),
 				isSaved: false,
+				history: state.history,
 				activity: {
 					status: 'updated',
 					startIndex: [null, null],
@@ -76,9 +80,23 @@ const reducer = (state, action) => {
 			return {
 				values: structuredClone(state.values),
 				finalValues: structuredClone(state.values),
+				history: structuredClone([...state.history, state.finalValues]),
 				isSaved: true,
 				activity: {
 					status: 'saved',
+					startIndex: [null, null],
+				},
+			};
+
+		case 'revert':
+			const prevValues = structuredClone(state.history.slice(-1)[0]);
+			return {
+				values: prevValues,
+				finalValues: prevValues,
+				history: structuredClone(state.history.slice(0, state.history.length - 1)),
+				isSaved: true,
+				activity: {
+					status: 'reverted',
 					startIndex: [null, null],
 				},
 			};
@@ -98,8 +116,9 @@ export default function Table() {
 	const [defValLastIndex, setDefValLastIndex] = useState([null, null]);
 	const [table, dispatch] = useReducer(reducer, {
 		values: [[]],
-		finalValues: [],
+		finalValues: [[]],
 		isSaved: true,
+		history: [],
 		activity: {
 			status: 'standby',
 			startIndex: [],
@@ -109,7 +128,7 @@ export default function Table() {
 
 	useEffect(() => {
 		console.group('Table Values');
-		// console.log('history', table.history);
+		console.log('history', table.history);
 		console.log('initial table values:', table.values);
 		console.log('initial table status:', table.activity.status, table.activity.startIndex);
 		console.log('final table values:', table.finalValues);
@@ -190,7 +209,12 @@ export default function Table() {
 				</thead>
 				<tbody>{tableRows}</tbody>
 			</table>
-			<TableOption dispatch={dispatch} tableIsSaved={table.isSaved} tableStatus={table.activity.status} />
+			<TableOption
+				dispatch={dispatch}
+				tableIsSaved={table.isSaved}
+				tableStatus={table.activity.status}
+				tableHasHistory={table.history.length > 1}
+			/>
 		</>
 	);
 }

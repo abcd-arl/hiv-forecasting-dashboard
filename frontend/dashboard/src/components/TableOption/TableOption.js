@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-export default function TableOption({ dispatch, tableIsSaved, tableStatus }) {
+export default function TableOption({ dispatch, tableIsSaved, tableStatus, tableHasHistory }) {
 	const inputRef = useRef(null);
 
 	const handleOnAdd = (e) => {
@@ -12,12 +12,19 @@ export default function TableOption({ dispatch, tableIsSaved, tableStatus }) {
 		else dispatch({ type: 'save' });
 	};
 
+	const handleOnRevert = (e) => {
+		dispatch({ type: 'revert' });
+	};
+
 	return (
 		<div>
 			<button onClick={handleOnAdd}>Add</button>
 			<input ref={inputRef} type="number" defaultValue={1} />
 			<button disabled={tableIsSaved} onClick={handleOnSave}>
 				Save
+			</button>
+			<button disabled={!tableHasHistory} onClick={handleOnRevert}>
+				Revert
 			</button>
 		</div>
 	);
