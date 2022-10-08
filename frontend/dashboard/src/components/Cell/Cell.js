@@ -39,6 +39,16 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 	};
 
 	const handleDataOnDoubleClick = (e) => {
+		if (cellStatus === 'default') {
+			console.log('Cannot edit default values.');
+			return;
+		}
+
+		if (tableStatus === 'editing') {
+			console.log('Please finish editing first.');
+			return;
+		}
+
 		setIsEditing(true);
 	};
 
@@ -48,7 +58,7 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 				<input
 					ref={inputRef}
 					placeholder="NaN"
-					defaultValue={cell.value}
+					defaultValue={initialValue}
 					onChange={handleInputOnChange}
 					onBlur={handleInputOnBlur}
 				></input>
@@ -56,5 +66,5 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		);
 	}
 
-	return <td onDoubleClick={handleDataOnDoubleClick}>{cell.value}</td>;
+	return <td onDoubleClick={handleDataOnDoubleClick}>{initialValue}</td>;
 }
