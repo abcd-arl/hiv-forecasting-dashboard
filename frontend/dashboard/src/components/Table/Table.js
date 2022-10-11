@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useReducer } from 'react';
 import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
-function getTableLastIndex(tableValues) {
+const getTableLastIndex = function (tableValues) {
 	console.log(tableValues);
 	return [tableValues.length - 1, tableValues[tableValues.length - 1].length - 1];
-}
+};
 
 const reducer = (state, action) => {
 	const lastColPerRow = 3;
