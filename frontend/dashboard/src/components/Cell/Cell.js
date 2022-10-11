@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import deleteIcon from './icon-delete.png';
+import editIcon from './icon-edit.png';
+import './cell.css';
 
 export default function Cell({ dispatch, index, initialValue, cellStatus, tableStatus }) {
 	const [cell, setCell] = useState({ value: initialValue, isToUpdate: false });
@@ -6,14 +9,18 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 	const inputRef = useRef(null);
 
 	useEffect(() => {
-		if (cellStatus !== 'index' && cellStatus !== 'default' && cellStatus !== 'initialized') {
-			// console.group('cell', index);
-			// console.log('initial value', initialValue);
-			// console.log('cell value', cell.value);
-			// console.log('cell status', cellStatus);
-			// console.log('table status', tableStatus);
-			// console.log('isEditing', isEditing);
-			// console.groupEnd();
+		// f (cellStatus !== 'index' && cellStatus !== 'default' && cellStatus !== 'initialized') {
+		// 	console.group('cell', index);
+		// 	console.log('initial value', initialValue);
+		// 	console.log('cell value', cell.value);
+		// 	console.log('cell status', cellStatus);
+		// 	console.log('table status', tableStatus);
+		// 	console.log('isEditing', isEditing);
+		// 	console.groupEnd();
+		// }i
+
+		if (cellStatus === 'editing' && tableStatus === 'editing' && !isEditing) {
+			setIsEditing(true);
 		}
 
 		if (tableStatus === 'saving' && isEditing) {
@@ -44,12 +51,26 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 			return;
 		}
 
+		if (cellStatus === 'index') {
+			return;
+		}
+
 		if (tableStatus === 'editing') {
 			console.log('Please finish editing first.');
 			return;
 		}
 
 		setIsEditing(true);
+	};
+
+	const handleDataOnEdit = (e) => {
+		dispatch({ type: 'edit', index: index });
+	};
+
+	const handleDataOnDelete = (e) => {
+		let alertText =
+			'Are you sure you want to delete this cell and the cells after? Changes you made before this will automatically be saved.';
+		if (window.confirm(alertText)) dispatch({ type: 'delete', index: index });
 	};
 
 	if (isEditing) {
@@ -66,5 +87,25 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		);
 	}
 
-	return <td onDoubleClick={handleDataOnDoubleClick}>{initialValue}</td>;
+	const cellOptions = (function () {
+		return (
+			<div className="cell-option">
+				<button onClick={handleDataOnDelete}>
+					<img src={deleteIcon} />
+				</button>
+				<button onClick={handleDataOnEdit}>
+					<img src={editIcon} />
+				</button>
+			</div>
+		);
+	})();
+
+	return (
+		<td onDoubleClick={handleDataOnDoubleClick}>
+			<div className={cellStatus === 'index' ? '' : 'cell'}>
+				{initialValue}
+				{cellStatus !== 'index' && cellStatus !== 'default' && cellOptions}
+			</div>
+		</td>
+	);
 }

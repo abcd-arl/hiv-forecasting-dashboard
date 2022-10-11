@@ -3,6 +3,7 @@ import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
 function getTableLastIndex(tableValues) {
+	console.log(tableValues);
 	return [tableValues.length - 1, tableValues[tableValues.length - 1].length - 1];
 }
 
@@ -27,21 +28,20 @@ const reducer = (state, action) => {
 			};
 
 		case 'add':
-			const tableValues = structuredClone(state.values);
+			const tableValuesAdd = structuredClone(state.values);
 
 			let numOfCellsToAdd = action.numOfCellsToAdd;
 			while (numOfCellsToAdd) {
-				const [lastRow, lastCol] = getTableLastIndex(tableValues);
-				console.log('lastCol', lastCol);
+				const [lastRow, lastCol] = getTableLastIndex(tableValuesAdd);
 
-				if (lastCol < lastColPerRow) tableValues[lastRow].push('');
-				else tableValues.push([tableValues[lastRow][0] + 1, '']);
+				if (lastCol < lastColPerRow) tableValuesAdd[lastRow].push('');
+				else tableValuesAdd.push([tableValuesAdd[lastRow][0] + 1, '']);
 
 				numOfCellsToAdd = numOfCellsToAdd - 1;
 			}
 
 			return {
-				values: tableValues,
+				values: tableValuesAdd,
 				finalValues: structuredClone(state.finalValues),
 				isSaved: false,
 				history: state.history,
@@ -97,6 +97,38 @@ const reducer = (state, action) => {
 				isSaved: true,
 				activity: {
 					status: 'reverted',
+					startIndex: [null, null],
+				},
+			};
+
+		case 'edit':
+			return {
+				values: structuredClone(state.values),
+				finalValues: structuredClone(state.finalValues),
+				history: state.history,
+				isSaved: false,
+				activity: {
+					status: 'editing',
+					startIndex: action.index,
+				},
+			};
+
+		case 'delete':
+			let tableValuesDelete = [[]];
+			if (action.index[1] === 1) {
+				tableValuesDelete = state.values.slice(0, action.index[0]);
+			} else {
+				tableValuesDelete = state.values.slice(0, action.index[0] + 1);
+				tableValuesDelete[action.index[0]] = state.values[action.index[0]].slice(0, action.index[1]);
+			}
+
+			return {
+				values: structuredClone(tableValuesDelete),
+				finalValues: structuredClone(tableValuesDelete),
+				history: structuredClone([...state.history, state.finalValues]),
+				isSaved: true,
+				activity: {
+					status: 'deleted',
 					startIndex: [null, null],
 				},
 			};
