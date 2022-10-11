@@ -69,7 +69,7 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 
 	const handleDataOnDelete = (e) => {
 		let alertText =
-			'Are you sure you want to delete this cell and the cells after? Changes you made before this will automatically be saved.';
+			'Are you sure you want to delete this cell and the cells after? Changes you made before this will also be automatically saved.';
 		if (window.confirm(alertText)) dispatch({ type: 'delete', index: index });
 	};
 
