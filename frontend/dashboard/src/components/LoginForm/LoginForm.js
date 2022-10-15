@@ -1,7 +1,8 @@
 import { Formik, Field, Form, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import axios from 'axios';
 
-export default function LoginForm() {
+export default function LoginForm({ setCookie }) {
 	return (
 		<Formik
 			initialValues={{ username: '', password: '' }}
@@ -9,8 +10,20 @@ export default function LoginForm() {
 				username: Yup.string().required('No username provided'),
 				password: Yup.string().required('No password provided.'),
 			})}
-			onSubmit={() => {
-				console.log('submitted');
+			onSubmit={(values) => {
+				axios
+					.post('http://127.0.0.1:8000/api/dj-rest-auth/login/', values)
+					.then((response) => {
+						console.log('here');
+						setCookie('token', response.data.key, { path: '/', maxAge: 1000, secure: true, sameSite: 'strict' });
+						window.setTimeout(() => {
+							if (alert('Your session has expired.')) {
+							} else window.location.reload();
+						}, 3600000);
+					})
+					.catch((error) => {
+						console.log('error:', error.messsage);
+					});
 			}}
 		>
 			<Form>
