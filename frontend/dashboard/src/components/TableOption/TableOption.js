@@ -1,12 +1,21 @@
 import { useRef } from 'react';
 
-export default function TableOption({ dispatch, tableIsSaved, tableStatus }) {
-	const inputRef = useRef(null);
+export default function TableOption({
+	dispatch,
+	tableIsSaved,
+	tableStatus,
+	isValid,
+	isAdmin,
+	updateTableAsAdmin,
+	generateForecast,
+}) {
+	const inputNumRef = useRef(null);
+	const inputDateRef = useRef(null);
 
 	const handleOnAdd = (e) => {
 		try {
-			const numOfCellsToAdd = parseInt(inputRef.current.value);
-			if (numOfCellsToAdd < 1 || isNaN(numOfCellsToAdd)) throw 'Please enter a positive integer number.';
+			const numOfCellsToAdd = parseInt(inputNumRef.current.value);
+			if (!isValid(numOfCellsToAdd)) throw 'Please enter a positive integer number.';
 			dispatch({ type: 'add', numOfCellsToAdd: numOfCellsToAdd });
 		} catch (error) {
 			console.log('Invalid input. ' + error);
@@ -18,13 +27,31 @@ export default function TableOption({ dispatch, tableIsSaved, tableStatus }) {
 		else dispatch({ type: 'save' });
 	};
 
+	const handleOnUpdateTable = (e) => {
+		updateTableAsAdmin(inputDateRef.current.value);
+	};
+
 	return (
 		<div>
 			<button onClick={handleOnAdd}>Add</button>
-			<input ref={inputRef} type="number" defaultValue={1} />
+			<input ref={inputNumRef} type="number" defaultValue={1} />
 			<button disabled={tableIsSaved} onClick={handleOnSave}>
 				Save
 			</button>
+			{isAdmin ? (
+				<>
+					<input ref={inputDateRef} type="date" />
+					<button onClick={handleOnUpdateTable}>Update Table</button>
+				</>
+			) : (
+				<button
+					onClick={() => {
+						generateForecast();
+					}}
+				>
+					Generate Forecast
+				</button>
+			)}
 		</div>
 	);
 }

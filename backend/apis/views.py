@@ -1,7 +1,9 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
+from django.core.files import File
 
+import sys
 import datetime
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
@@ -9,13 +11,14 @@ from statsmodels.tsa.arima.model import ARIMA
 from .models import Case
 
 @api_view(['GET', 'POST'])
-# @permission_classes((IsAuthenticated, ))
 def forecast(request):
     # read data, convert to pd.Series, and add date index
     series = []
     if request.method == 'GET':
         recent_case = Case.objects.all().first()
+        # print(recent_case.start_date)
         csv_file_path = recent_case.csv_file.url
+        print(csv_file_path)
         series = pd.read_csv(csv_file_path[1:])
         series = series.iloc[:, 0]
         series.index = pd.date_range(start=recent_case.start_date, periods=len(series), freq='M')
@@ -34,7 +37,7 @@ def forecast(request):
     final_model = ARIMA(series, order=(1,1,1), freq="M").fit()
 
     # get validation and residuals
-    validation = pd.Series(initial_model.forecast(len(test))[0], index=test.index)
+    validation = pd.Series(initial_model.forecast(len(test)))
     residuals = test - validation
 
     # # forecast
@@ -57,5 +60,26 @@ def forecast(request):
 
     return Response(data)
 
-# @api_view(['POST'])
-# def edit(request):
+@api_view(['POST'])
+@permission_classes((IsAuthenticated, ))
+def update_table(request):
+    try:
+        series = pd.Series([int(value) for value in request.data['cases']])
+        series.name = 'Cases'
+
+        csv_file = series.to_csv("media/new.csv")
+        start_date = datetime.datetime.strptime(request.data['startDate'], '%Y-%m-%d').date()
+
+        f = open('media/new.csv')
+        myfile = File(f)
+
+        new_record = Case(start_date=start_date)
+        new_record.csv_file.save("new.csv", myfile)
+        new_record.save()
+
+    except Exception as e:
+        print("Oops!", e, "occurred.")
+        return Response({"message": "failed"})
+        # print('Failed to update the table.')
+
+    return Response({"message": "success"})

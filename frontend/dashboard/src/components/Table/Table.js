@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer } from 'react';
+import axios from 'axios';
 import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
@@ -6,82 +7,44 @@ import Cell from '../Cell/Cell';
 dataset: just one dataset with cases and starting date
 */
 
-const getTableLastIndex = function (tableValues) {
-	return [tableValues.length - 1, tableValues[tableValues.length - 1].length - 1];
-};
-
-const getTableNextIndex = function (tableValues) {
-	const lastColPerRow = 13;
-	const [lastRow, lastCol] = getTableLastIndex(tableValues);
-
-	if (lastCol < lastColPerRow) return [tableValues.length - 1, tableValues[tableValues.length - 1].length];
-	else return [tableValues.length, 1];
-};
-
-const isValid = function (value) {
-	return value === 'NaN' || (!isNaN(value) && value > 0);
-};
-
-const isEmpty = function (obj) {
-	return Object.keys(obj).length === 0;
-};
-
+const COL_NUM_PER_ROW = 12;
+const isValid = (value) => value === 'NaN' || (!isNaN(value) && value > 0);
+const isEmpty = (obj) => Object.keys(obj).length === 0;
 const reducer = (state, action) => {
-	const lastColPerRow = 13;
-
 	switch (action.type) {
 		case 'initialize':
-			const tableValuesInitialize = [];
-			const cases = structuredClone(action.dataset.cases);
-			const startDate = action.dataset.startDate;
-
-			let startYear = 2010;
-			while (cases.length) {
-				tableValuesInitialize.push([startYear, ...cases.splice(0, 12)]); // convert original cases to 2d array
-				startYear++;
-			}
-
 			return {
-				values: tableValuesInitialize,
-				finalValues: structuredClone(tableValuesInitialize),
+				values: [...action.dataset.cases],
+				finalValues: [...action.dataset.cases],
+				startDate: [...action.dataset.startDate],
 				isSaved: true,
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'initialized',
-					startIndex: [0, 0],
+					startIndex: 0,
 				},
 			};
 
 		case 'add':
-			const tableValuesAdd = structuredClone(state.values);
-
-			let numOfCellsToAdd = action.numOfCellsToAdd;
-			while (numOfCellsToAdd) {
-				const [lastRow, lastCol] = getTableLastIndex(tableValuesAdd);
-
-				if (lastCol < lastColPerRow) tableValuesAdd[lastRow].push('');
-				else tableValuesAdd.push([tableValuesAdd[lastRow][0] + 1, '']);
-
-				numOfCellsToAdd = numOfCellsToAdd - 1;
-			}
-
 			return {
-				values: tableValuesAdd,
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values].concat(Array(action.numOfCellsToAdd).fill('')),
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'editing',
-					startIndex: getTableNextIndex(state.values),
+					startIndex: state.values.length,
 				},
 			};
 
 		case 'pre-save':
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: true,
 				foundErrors: structuredClone(state.foundErrors),
@@ -92,61 +55,64 @@ const reducer = (state, action) => {
 			};
 
 		case 'update':
-			const tableValuesUpdate = structuredClone(state.values);
+			const valuesForUpdate = [...state.values];
+			valuesForUpdate[action.index] = action.value;
 
 			if (action.index in state.foundErrors && isValid(action.value)) delete state.foundErrors[action.index];
 			else if (!(action.index in state.foundErrors) && !isValid(action.value)) state.foundErrors[action.index] = true;
 
-			tableValuesUpdate[action.index[0]][action.index[1]] = action.value;
-
 			return {
-				values: tableValuesUpdate,
-				finalValues: structuredClone(state.finalValues),
+				values: valuesForUpdate,
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: state.isSaving,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'updated',
-					startIndex: state.activity.startIndex,
+					startIndex: null,
 				},
 			};
 
 		case 'save':
-			let tableValuesSave = structuredClone(state.values);
-			if (!isEmpty(state.foundErrors)) tableValuesSave = structuredClone(state.finalValues);
+			let valuesForSave = [...state.values];
+			if (!isEmpty(state.foundErrors)) valuesForSave = [...state.finalValues];
 
 			return {
-				values: structuredClone(state.values),
-				finalValues: tableValuesSave,
-				isSaved: isEmpty(state.foundErrors) ? true : false,
+				values: [...state.values],
+				finalValues: valuesForSave,
+				startDate: [...state.startDate],
+				isSaved: isEmpty(state.foundErrors),
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'saved',
-					startIndex: [null, null],
+					startIndex: null,
 				},
 			};
 
 		case 'post-save':
-			let tableValuesPostSave = structuredClone(state.values);
-			if (!isEmpty(state.foundErrors)) tableValuesPostSave = structuredClone(state.finalValues);
+			let valuesForPostSave = [...state.values];
+			if (!isEmpty(state.foundErrors)) valuesForPostSave = [...state.finalValues];
 
 			return {
-				values: structuredClone(state.values),
-				finalValues: tableValuesPostSave,
-				isSaved: isEmpty(state.foundErrors) ? true : false,
+				values: [...state.values],
+				finalValues: valuesForPostSave,
+				startDate: [...state.startDate],
+				isSaved: isEmpty(state.foundErrors),
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'post-saved',
-					startIndex: [null, null],
+					startIndex: null,
 				},
 			};
 
 		case 'edit':
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
@@ -157,30 +123,20 @@ const reducer = (state, action) => {
 			};
 
 		case 'delete':
-			let tableValuesDelete = [[]];
-			if (action.index[1] === 1) {
-				tableValuesDelete = state.values.slice(0, action.index[0]);
-			} else {
-				tableValuesDelete = state.values.slice(0, action.index[0] + 1);
-				tableValuesDelete[action.index[0]] = state.values[action.index[0]].slice(0, action.index[1]);
-			}
-
 			for (let key in state.foundErrors) {
-				const index = key.split(',').map((i) => parseInt(i));
-				if (index[0] > action.index[0] || (index[0] === action.index[0] && index[1] >= action.index[1])) {
-					delete state.foundErrors[index];
-				}
+				if (parseInt(key) <= action.index) delete state.foundErrors[key];
 			}
 
 			return {
-				values: structuredClone(tableValuesDelete),
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values.slice(0, action.index)],
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
 				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'deleted',
-					startIndex: [null, null],
+					startIndex: null,
 				},
 			};
 
@@ -189,11 +145,12 @@ const reducer = (state, action) => {
 	}
 };
 
-export default function Table({ dataset, isAdmin, removeCookie, cookies }) {
-	const [defValLastIndex, setDefValLastIndex] = useState([null, null]);
+export default function Table({ dataset, setData, isAdmin, cookies, updateTableAsAdmin }) {
+	const [defValLastIndex, setDefValLastIndex] = useState(null);
 	const [table, dispatch] = useReducer(reducer, {
-		values: [[]],
-		finalValues: [[]],
+		values: [],
+		finalValues: [],
+		startDate: [],
 		isSaved: true,
 		isSaving: false,
 		foundErrors: {},
@@ -207,6 +164,7 @@ export default function Table({ dataset, isAdmin, removeCookie, cookies }) {
 		console.group('Table Values');
 		console.log('dataset', dataset);
 		console.log('cookies', cookies);
+		console.log('startDate', table.startDate);
 		console.log('found errors', table.foundErrors);
 		console.log('initial table values:', table.values);
 		console.log('initial table status:', table.activity.status, table.activity.startIndex);
@@ -219,7 +177,7 @@ export default function Table({ dataset, isAdmin, removeCookie, cookies }) {
 	useEffect(() => {
 		switch (table.activity.status) {
 			case 'initialized':
-				setDefValLastIndex(getTableLastIndex(table.values));
+				setDefValLastIndex(table.values.length - 1);
 				break;
 			case 'updated':
 				if (table.isSaving) {
@@ -235,39 +193,80 @@ export default function Table({ dataset, isAdmin, removeCookie, cookies }) {
 		dispatch({ type: 'initialize', dataset: dataset });
 	}, []);
 
+	function updateTableAsAdmin(startDate) {
+		const cases = table.finalValues.map((value) => parseInt(value));
+
+		axios
+			.post(
+				'http://localhost:8000/api/update-table/',
+				{
+					cases: cases,
+					startDate: startDate,
+				},
+				{
+					headers: {
+						Authorization: `Token ${cookies.token}`,
+					},
+				}
+			)
+			.then((response) => {
+				console.log('success', response.data);
+				// setData(response.data);
+			})
+			.catch((error) => {
+				console.log(error.message);
+				return <h2>Error occured</h2>;
+			});
+	}
+
+	function generateForecast() {
+		// Remind users they have unsaved chanegs
+
+		const cases = table.finalValues.map((value) => parseInt(value));
+
+		axios
+			.post('http://localhost:8000/api/forecast/', {
+				cases: cases,
+				startDate: 2010,
+			})
+			.then((response) => {
+				console.log('success', response.data);
+				setData(response.data);
+			})
+			.catch((error) => {
+				console.log(error.message);
+				return <h2>Error occured</h2>;
+			});
+	}
+
 	const tableRows = (() => {
-		const lastRow = getTableLastIndex(table.values)[0];
-		const [defValueLastRow, defValueLastCol] = defValLastIndex;
+		let [startYear, startMonth] = table.startDate;
 		const rows = [];
+		let row = [];
 
-		for (let i = 0; i <= lastRow; i++) {
-			const cols = [];
-			for (let j = 0; j <= table.values[i].length - 1; j++) {
-				let cellStatus = null;
-
-				if (j === 0) cellStatus = 'index';
-				else if (!isAdmin && (i < defValueLastRow || (i === defValueLastRow && j <= defValueLastCol)))
-					cellStatus = 'default';
-				else if (
-					i > table.activity.startIndex[0] ||
-					(i === table.activity.startIndex[0] && j >= table.activity.startIndex[1])
-				)
-					cellStatus = table.activity.status;
-				else cellStatus = 'standby';
-
-				cols.push(
-					<Cell
-						key={[i, j]}
-						dispatch={dispatch}
-						index={[i, j]}
-						initialValue={table.values[i][j]}
-						cellStatus={cellStatus}
-						tableStatus={table.activity.status}
-					/>
-				);
+		for (let i = 0; i < table.values.length; i++) {
+			if (i % 12 === 0) {
+				if (!isEmpty(row)) rows.push(<tr key={'row-' + i / 12}>{row}</tr>);
+				row = [<td key={startYear}>{startYear++}</td>];
 			}
-			rows.push(<tr key={i}>{cols}</tr>);
+
+			let cellStatus = null;
+			if (!isAdmin && i <= defValLastIndex) cellStatus = 'default';
+			else if (i >= table.activity.startIndex) cellStatus = table.activity.status;
+			else cellStatus = 'standby';
+
+			row.push(
+				<Cell
+					key={i}
+					dispatch={dispatch}
+					index={i}
+					initialValue={table.values[i]}
+					cellStatus={cellStatus}
+					tableStatus={table.activity.status}
+				/>
+			);
 		}
+		if (!isEmpty(row)) rows.push(<tr key={'row-' + rows.length + 1}>{row}</tr>);
 		return rows;
 	})();
 
@@ -293,7 +292,15 @@ export default function Table({ dataset, isAdmin, removeCookie, cookies }) {
 				</thead>
 				<tbody>{tableRows}</tbody>
 			</table>
-			<TableOption dispatch={dispatch} tableIsSaved={table.isSaved} tableStatus={table.activity.status} />
+			<TableOption
+				dispatch={dispatch}
+				tableIsSaved={table.isSaved}
+				tableStatus={table.activity.status}
+				isValid={isValid}
+				isAdmin={isAdmin}
+				generateForecast={generateForecast}
+				updateTableAsAdmin={updateTableAsAdmin}
+			/>
 		</>
 	);
 }

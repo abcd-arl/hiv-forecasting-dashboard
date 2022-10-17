@@ -8,25 +8,19 @@ import { Routes, Route } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 import axios from 'axios';
 
+const isEmpty = (obj) => Object.keys(obj).length === 0;
+
 function App() {
 	const [cookies, setCookie, removeCookie] = useCookies(['token']);
 	const [data, setData] = useState([]);
 
 	useEffect(() => {
-		axios
-			.get('http://localhost:8000/api/forecast/')
-			.then((response) => {
-				setData(response.data);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				return <h2>Error occured</h2>;
-			});
+		getTableValues();
 	}, []);
 
-	function generateForecast(values) {
+	function getTableValues() {
 		axios
-			.post('http://localhost:8000/api/forecast/')
+			.get('http://localhost:8000/api/forecast/')
 			.then((response) => {
 				setData(response.data);
 			})
@@ -40,36 +34,26 @@ function App() {
 		console.log(type, message);
 	}
 
-	const rootComponents = (
-		<>
-			{data.actual ? (
-				<>
-					{/* <LineChart datasets={[data.actual, data.validation]} colors={['blue', 'red']} /> */}
-					<Table dataset={data.actual} />
-				</>
-			) : (
-				<h2>Please wait</h2>
-			)}
-		</>
-	);
+	function getRootPathComponents() {
+		return (
+			<>
+				<LineChart datasets={[data.actual, data.validation]} colors={['blue', 'red']} />
+				<Table dataset={data.actual} setData={setData} />
+			</>
+		);
+	}
 
-	// fix condition when data is empty
+	function getAdminPathComponents() {
+		if (cookies.token) return <Table dataset={data.actual} isAdmin={true} cookies={cookies} />;
+		else return <LoginForm setCookie={setCookie} />;
+	}
 
 	return (
 		<>
 			<h1 className="text-3xl font-bold underline">Hello world!</h1>
 			<Routes>
-				<Route path="/" element={rootComponents} />
-				<Route
-					path="/admin"
-					element={
-						cookies.token && data.actual ? (
-							<Table dataset={data.actual} isAdmin={true} removeCookie={removeCookie} cookies={cookies} />
-						) : (
-							<LoginForm setCookie={setCookie} />
-						)
-					}
-				/>
+				<Route path="/" element={isEmpty(data) ? <h2>please wait</h2> : getRootPathComponents()} />
+				<Route path="/admin" element={isEmpty(data) ? <h2>please wait</h2> : getAdminPathComponents()} />
 			</Routes>
 		</>
 	);

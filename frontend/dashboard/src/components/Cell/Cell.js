@@ -51,10 +51,6 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 			return;
 		}
 
-		if (cellStatus === 'index') {
-			return;
-		}
-
 		if (tableStatus === 'editing') {
 			console.log('Please finish editing first.');
 			return;
@@ -71,6 +67,8 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		let alertText = 'Are you sure you want to delete this cell and the cells after?';
 		if (window.confirm(alertText)) dispatch({ type: 'delete', index: index });
 	};
+
+	if (cellStatus === 'filler') return <td></td>;
 
 	if (isEditing) {
 		return (

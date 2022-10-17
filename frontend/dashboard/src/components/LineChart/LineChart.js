@@ -9,7 +9,6 @@ import {
 	Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import add from 'date-fns/add';
 import 'chartjs-adapter-date-fns';
 ChartJS.register(TimeSeriesScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -26,13 +25,14 @@ export default function LineChart({ datasets, colors }) {
 	};
 	const data = {
 		datasets: datasets.map((dataset, idx) => {
+			console.log(dataset.startDate);
 			return {
-				label: 'No. of HIV Cases',
+				label: 'No. of HIV Cases' + idx,
 				data: (() => {
 					const cases = [];
 					for (let i = 0; i < dataset.cases.length; i++) {
 						cases.push({
-							x: add(new Date(dataset.startDate[0], dataset.startDate[1], 0), { months: i }),
+							x: new Date(dataset.startDate[0], dataset.startDate[1] + i, 0),
 							y: dataset.cases[i],
 						});
 					}
