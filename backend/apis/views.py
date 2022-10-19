@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -18,13 +19,13 @@ def forecast(request):
         recent_case = Case.objects.all().first()
         # print(recent_case.start_date)
         csv_file_path = recent_case.csv_file.url
-        print(csv_file_path)
         series = pd.read_csv(csv_file_path[1:])
         series = series.iloc[:, 0]
         series.index = pd.date_range(start=recent_case.start_date, periods=len(series), freq='M')
 
     elif request.method == 'POST':
         series = pd.Series(request.data['cases'])
+        print('isNull', pd.isnull(request.data['cases'][-1]))
         series.index = pd.date_range(start=datetime.date(2010, 1, 1), periods=len(request.data['cases']), freq='M')
 
     # generate training and testing data
@@ -45,7 +46,7 @@ def forecast(request):
 
     data = {
         "actual": {
-            "startDate": [series.index[0].year, series.index[0].month],
+            "startDate": [series.index[0].year, series.index[0].month, series.index[0].day],
             "cases": series.tolist(),
         },
         "validation" : {
@@ -64,22 +65,18 @@ def forecast(request):
 @permission_classes((IsAuthenticated, ))
 def update_table(request):
     try:
-        series = pd.Series([int(value) for value in request.data['cases']])
-        series.name = 'Cases'
-
-        csv_file = series.to_csv("media/new.csv")
+        series = pd.Series([int(value) for value in request.data['cases']], name='Cases')
         start_date = datetime.datetime.strptime(request.data['startDate'], '%Y-%m-%d').date()
-
+        
+        series.to_csv("media/new.csv", index=False)
         f = open('media/new.csv')
         myfile = File(f)
 
-        new_record = Case(start_date=start_date)
-        new_record.csv_file.save("new.csv", myfile)
-        new_record.save()
+    except ValueError:
+        return Response(status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-    except Exception as e:
-        print("Oops!", e, "occurred.")
-        return Response({"message": "failed"})
-        # print('Failed to update the table.')
+    new_record = Case(start_date=start_date)
+    new_record.csv_file.save("new.csv", myfile)
+    new_record.save()
 
-    return Response({"message": "success"})
+    return Response()

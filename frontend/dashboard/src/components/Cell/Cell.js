@@ -35,17 +35,17 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		}
 	}, [cell, dispatch]);
 
-	const handleInputOnBlur = (e) => {
+	function handleInputOnBlur(e) {
 		if (tableStatus === 'editing' && isEditing) return;
 		setIsEditing(!isEditing);
 		setCell({ value: e.target.value ? e.target.value : 'NaN', isToUpdate: true });
-	};
+	}
 
-	const handleInputOnChange = (e) => {
+	function handleInputOnChange(e) {
 		setCell({ value: e.target.value, isToUpdate: false });
-	};
+	}
 
-	const handleDataOnDoubleClick = (e) => {
+	function handleDataOnDoubleClick(e) {
 		if (cellStatus === 'default') {
 			console.log('Cannot edit default values.');
 			return;
@@ -57,16 +57,16 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		}
 
 		setIsEditing(true);
-	};
+	}
 
-	const handleDataOnEdit = (e) => {
+	function handleDataOnEdit(e) {
 		dispatch({ type: 'edit', index: index });
-	};
+	}
 
-	const handleDataOnDelete = (e) => {
+	function handleDataOnDelete(e) {
 		let alertText = 'Are you sure you want to delete this cell and the cells after?';
 		if (window.confirm(alertText)) dispatch({ type: 'delete', index: index });
-	};
+	}
 
 	if (cellStatus === 'filler') return <td></td>;
 

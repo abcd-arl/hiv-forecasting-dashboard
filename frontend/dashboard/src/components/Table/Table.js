@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer } from 'react';
-import axios from 'axios';
+
 import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
@@ -175,6 +175,10 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 	});
 
 	useEffect(() => {
+		if (!isEmpty(table.foundErrors)) {
+			// displayAlert
+		}
+
 		switch (table.activity.status) {
 			case 'initialized':
 				setDefValLastIndex(table.values.length - 1);
@@ -193,51 +197,7 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 		dispatch({ type: 'initialize', dataset: dataset });
 	}, []);
 
-	function updateTableAsAdmin(startDate) {
-		const cases = table.finalValues.map((value) => parseInt(value));
-
-		axios
-			.post(
-				'http://localhost:8000/api/update-table/',
-				{
-					cases: cases,
-					startDate: startDate,
-				},
-				{
-					headers: {
-						Authorization: `Token ${cookies.token}`,
-					},
-				}
-			)
-			.then((response) => {
-				console.log('success', response.data);
-				// setData(response.data);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				return <h2>Error occured</h2>;
-			});
-	}
-
-	function generateForecast() {
-		// Remind users they have unsaved chanegs
-
-		const cases = table.finalValues.map((value) => parseInt(value));
-
-		axios
-			.post('http://localhost:8000/api/forecast/', {
-				cases: cases,
-				startDate: 2010,
-			})
-			.then((response) => {
-				console.log('success', response.data);
-				setData(response.data);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				return <h2>Error occured</h2>;
-			});
-	}
+	function updateTableAsAdmin(startDate) {}
 
 	const tableRows = (() => {
 		let [startYear, startMonth] = table.startDate;
@@ -293,13 +253,13 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 				<tbody>{tableRows}</tbody>
 			</table>
 			<TableOption
+				table={table}
 				dispatch={dispatch}
-				tableIsSaved={table.isSaved}
-				tableStatus={table.activity.status}
-				isValid={isValid}
+				setData={setData}
+				cookies={cookies}
 				isAdmin={isAdmin}
-				generateForecast={generateForecast}
 				updateTableAsAdmin={updateTableAsAdmin}
+				startDate={dataset.startDate}
 			/>
 		</>
 	);

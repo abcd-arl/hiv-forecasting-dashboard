@@ -14,9 +14,30 @@ ChartJS.register(TimeSeriesScale, LinearScale, PointElement, LineElement, Title,
 
 export default function LineChart({ datasets, colors }) {
 	const options = {
+		plugins: {
+			tooltip: {
+				callbacks: {
+					title: (context) => {
+						const date = new Date(context[0].raw.x);
+						const formattedDate = date.toLocaleString([], {
+							year: 'numeric',
+							month: 'short',
+							day: 'numeric',
+						});
+						return formattedDate;
+					},
+				},
+			},
+		},
 		scales: {
 			x: {
 				type: 'timeseries',
+				ticks: {
+					autoskip: true,
+				},
+				time: {
+					unit: 'year',
+				},
 			},
 			y: {
 				beginAtZero: true,
@@ -25,9 +46,8 @@ export default function LineChart({ datasets, colors }) {
 	};
 	const data = {
 		datasets: datasets.map((dataset, idx) => {
-			console.log(dataset.startDate);
 			return {
-				label: 'No. of HIV Cases' + idx,
+				label: 'No. of HIV Cases',
 				data: (() => {
 					const cases = [];
 					for (let i = 0; i < dataset.cases.length; i++) {
@@ -39,7 +59,10 @@ export default function LineChart({ datasets, colors }) {
 					return cases;
 				})(),
 				borderColor: colors[idx],
-				borderWidth: 0.5,
+				borderWidth: 1,
+				tension: 0.2,
+				pointRadius: 1,
+				showTooltips: false,
 			};
 		}),
 	};
