@@ -41,22 +41,30 @@ def forecast(request):
     validation = pd.Series(initial_model.forecast(len(test)))
     residuals = test - validation
 
-    # # forecast
-    # forecast = pd.Series(final_model.forecast(24)[0], index=pd.date_range(start=series.index[-1], periods=24, freq='M', closed='right')).to_frame('Number of Cases')
+    # forecast
+    forecast = pd.Series(final_model.forecast(12), name='Forecast')
 
     data = {
         "actual": {
+            "name": "Actual",
             "startDate": [series.index[0].year, series.index[0].month, series.index[0].day],
             "cases": series.tolist(),
         },
         "validation" : {
+            "name": "Validation",
             "startDate": [validation.index[0].year, validation.index[0].month],
             "cases": validation.tolist(),
         },
-         "residuals": {
+        "residuals": {
+            "name": "Residuals",
             "startDate": [residuals.index[0].year, residuals.index[0].month],
             "cases": residuals.tolist()
         },
+        "forecast": {
+            "name": "Forecast",
+            "startDate": [forecast.index[0].year, forecast.index[0].month],
+            "cases": forecast.tolist()
+        }
     }
 
     return Response(data)

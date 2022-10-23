@@ -83,20 +83,43 @@ export default function TableOption({ table, dispatch, setData, cookies, isAdmin
 		}`;
 
 	return (
-		<div>
-			<button onClick={handleOnAdd}>Add</button>
-			<input ref={inputNumRef} type="number" defaultValue={1} />
-			<button disabled={table.isSaved} onClick={handleOnSave}>
-				Save
-			</button>
-			{isAdmin ? (
-				<>
-					<input ref={inputDateRef} type="date" defaultValue={toDateStrFormat(startDate)} />
-					<button onClick={handleOnUpdateTable}>Update Table</button>
-				</>
-			) : (
-				<button onClick={handleOnGenerateForecast}>Generate Forecast</button>
-			)}
+		<div className="mb-2 flex justify-between text-xs">
+			<div className="flex">
+				<button className="px-2 py-1.5 mr-1.5 bg-slate-500 rounded font-bold text-white" onClick={handleOnAdd}>
+					Add
+				</button>
+				<input className="w-9 mr-1.5 px-2 border border-slate-300 " ref={inputNumRef} type="text" defaultValue={1} />
+				<span className="flex items-center">more cell(s)</span>
+			</div>
+			<div>
+				<button
+					className="px-2 py-1.5 mr-1.5 bg-slate-500 disabled:bg-slate-200 rounded font-bold text-white"
+					disabled={table.isSaved}
+					onClick={handleOnSave}
+				>
+					Save
+				</button>
+				{isAdmin ? (
+					<>
+						<input
+							className="p-[.30rem] border border-slate-400 mr-1.5"
+							ref={inputDateRef}
+							type="date"
+							defaultValue={toDateStrFormat(startDate)}
+						/>
+						<button className="px-2 py-1.5 bg-slate-500 rounded font-bold text-white" onClick={handleOnUpdateTable}>
+							Update Table
+						</button>
+					</>
+				) : (
+					<button
+						className="px-2 py-1.5 bg-red-400 rounded font-bold text-white hover:bg-red-500 hover:-translate-y-0.5 transform transition"
+						onClick={handleOnGenerateForecast}
+					>
+						Generate Forecast
+					</button>
+				)}
+			</div>
 		</div>
 	);
 }

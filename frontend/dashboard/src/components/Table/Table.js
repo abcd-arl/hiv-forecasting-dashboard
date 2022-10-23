@@ -200,14 +200,18 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 	function updateTableAsAdmin(startDate) {}
 
 	const tableRows = (() => {
-		let [startYear, startMonth] = table.startDate;
+		let startYear = table.startDate[0];
 		const rows = [];
 		let row = [];
 
 		for (let i = 0; i < table.values.length; i++) {
 			if (i % 12 === 0) {
 				if (!isEmpty(row)) rows.push(<tr key={'row-' + i / 12}>{row}</tr>);
-				row = [<td key={startYear}>{startYear++}</td>];
+				row = [
+					<td className="w-16 py-2 text-xs text-center bg-slate-200 border border-slate-300" key={startYear}>
+						{startYear++}
+					</td>,
+				];
 			}
 
 			let cellStatus = null;
@@ -223,6 +227,7 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 					initialValue={table.values[i]}
 					cellStatus={cellStatus}
 					tableStatus={table.activity.status}
+					isStartingCell={table.activity.startIndex === i}
 				/>
 			);
 		}
@@ -232,26 +237,6 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 
 	return (
 		<>
-			<table>
-				<thead>
-					<tr>
-						<th>Year</th>
-						<th>Jan</th>
-						<th>Feb</th>
-						<th>Mar</th>
-						<th>Apr</th>
-						<th>May</th>
-						<th>Jun</th>
-						<th>Jul</th>
-						<th>Aug</th>
-						<th>Sep</th>
-						<th>Oct</th>
-						<th>Nov</th>
-						<th>Dec</th>
-					</tr>
-				</thead>
-				<tbody>{tableRows}</tbody>
-			</table>
 			<TableOption
 				table={table}
 				dispatch={dispatch}
@@ -261,6 +246,21 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 				updateTableAsAdmin={updateTableAsAdmin}
 				startDate={dataset.startDate}
 			/>
+			<div className="w-full pb-2 overflow-auto">
+				<table className="w-full mx-auto table-fixed border-collapse text-xs">
+					<thead>
+						<tr>
+							<th className="w-16 py-2 bg-slate-200 border border-slate-300">Year</th>
+							{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month) => (
+								<th key={month} className="w-20 py-2 bg-slate-200 border border-slate-300">
+									{month}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>{tableRows}</tbody>
+				</table>
+			</div>
 		</>
 	);
 }
