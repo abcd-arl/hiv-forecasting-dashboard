@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import deleteIcon from './icon-delete.png';
-import editIcon from './icon-edit.png';
-import './cell.css';
+import deleteIcon from './icon-close.svg';
+import editIcon from './icon-edit.svg';
+// import './cell.css';
 
-export default function Cell({ dispatch, index, initialValue, cellStatus, tableStatus }) {
+export default function Cell({ dispatch, index, initialValue, cellStatus, tableStatus, isStartingCell }) {
 	const [cell, setCell] = useState({ value: initialValue, isToUpdate: false });
 	const [isEditing, setIsEditing] = useState(initialValue === '');
 	const inputRef = useRef(null);
@@ -72,13 +72,15 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 
 	if (isEditing) {
 		return (
-			<td>
+			<td className="border border-slate-300">
 				<input
+					className="w-[95%] h-[1.7rem] m-auto block text-center border-b-2 border-blue-500 focus:border-none"
 					ref={inputRef}
 					placeholder="NaN"
 					defaultValue={initialValue}
 					onChange={handleInputOnChange}
 					onBlur={handleInputOnBlur}
+					autoFocus={isStartingCell}
 				></input>
 			</td>
 		);
@@ -86,21 +88,26 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 
 	const cellOptions = (function () {
 		return (
-			<div className="cell-option">
-				<button onClick={handleDataOnDelete}>
-					<img src={deleteIcon} />
+			<div className="hidden group-hover:flex flex-col absolute top-[-.5rem] right-[-.65rem] z-50">
+				<button className="w-4" onClick={handleDataOnDelete}>
+					<img className="w-full" src={deleteIcon} />
 				</button>
-				<button onClick={handleDataOnEdit}>
-					<img src={editIcon} />
+				<button className="w-4" onClick={handleDataOnEdit}>
+					<img className="w-full" src={editIcon} />
 				</button>
 			</div>
 		);
 	})();
 
 	return (
-		<td onDoubleClick={handleDataOnDoubleClick}>
-			<div className={cellStatus === 'index' ? '' : 'cell'}>
-				{initialValue}
+		<td
+			className={`border border-slate-300 ${
+				cellStatus === 'default' ? 'bg-slate-50' : ' hover:border-2 hover:border-green-600 group'
+			} peer-[]`}
+			onDoubleClick={handleDataOnDoubleClick}
+		>
+			<div className={`${cellStatus === 'index' ? '' : 'cell'}, text-xs text-center relative`}>
+				{initialValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
 				{cellStatus !== 'index' && cellStatus !== 'default' && cellOptions}
 			</div>
 		</td>
