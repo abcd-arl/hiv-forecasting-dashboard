@@ -193,6 +193,7 @@ export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, c
 		console.log('final table values:', table.finalValues);
 		console.log('final table is recent:', table.isSaved);
 		console.log('is saivng', table.isSaving);
+		console.log('last def value', table.values[defValLastIndex]);
 		console.groupEnd();
 	});
 
@@ -208,7 +209,8 @@ export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, c
 				break;
 			case 'saved':
 			case 'post-saved':
-				if (!isEmpty(table.foundErrors)) displayAlert('danger', 'Unable to save changes. An input value is invalid.');
+				if (!isEmpty(table.foundErrors))
+					displayAlert('danger', 'Unable to save changes. One or more input values are invalid.');
 				break;
 			default:
 				return;
@@ -216,8 +218,12 @@ export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, c
 	}, [table]);
 
 	useEffect(() => {
-		dispatch({ type: 'initialize', dataset: dataset });
+		if (isAdmin) dispatch({ type: 'initialize', dataset: dataset });
 	}, [dataset]);
+
+	useEffect(() => {
+		dispatch({ type: 'initialize', dataset: dataset });
+	}, []);
 
 	function handleEmptyCellOnMouseOver(e) {
 		setIsBeingHovered((state) => true);
@@ -304,6 +310,7 @@ export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, c
 					cellStatus={cellStatus}
 					tableStatus={table.activity.status}
 					isStartingCell={table.activity.startIndex === i}
+					hasError={table.foundErrors[i] === true}
 					setIsBeingHovered={
 						!isAdmin && i >= defValLastIndex - ((defValLastIndex + table.startDate[1]) % 12) + 1 && i <= defValLastIndex
 							? setIsBeingHovered

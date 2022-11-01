@@ -4,7 +4,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { useState } from 'react';
 
-export default function LoginForm({ setCookie, logout }) {
+export default function LoginForm({ cookies, setCookie }) {
 	const [isIncorrect, setIsIncorrect] = useState(null);
 	const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -28,7 +28,7 @@ export default function LoginForm({ setCookie, logout }) {
 								setIsLoggingIn(false);
 								setCookie('token', response.data.key, { path: '/', maxAge: 1000, secure: true, sameSite: 'strict' });
 								window.setTimeout(() => {
-									alert('Your session has expired.');
+									if (cookies['token']) alert('Your session has expired.');
 								}, 3600000);
 							})
 							.catch((error) => {

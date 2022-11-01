@@ -10,6 +10,7 @@ export default function Cell({
 	cellStatus,
 	tableStatus,
 	isStartingCell,
+	hasError,
 	setIsBeingHovered,
 	displayAlert,
 }) {
@@ -130,7 +131,11 @@ export default function Cell({
 			onMouseEnter={handleDataOnMouseOver}
 			onMouseLeave={handleDataOnMouseOut}
 		>
-			<div className={`${cellStatus === 'index' ? '' : 'cell'}, text-xs text-center relative`}>
+			<div
+				className={`${cellStatus === 'index' ? '' : 'cell'}, ${
+					hasError ? 'text-red-500' : ''
+				} text-xs text-center relative`}
+			>
 				{cell.value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
 				{cellStatus !== 'index' && cellStatus !== 'default' && tableStatus === 'selecting' && cellOptions}
 			</div>

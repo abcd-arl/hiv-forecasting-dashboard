@@ -76,7 +76,7 @@ function App() {
 							</div>
 						</div>
 					);
-				return <LoginForm setCookie={setCookie} logout={handleOnLogout} />;
+				return <LoginForm cookies={cookies} setCookie={setCookie} />;
 			default:
 				return (
 					<>
