@@ -4,30 +4,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from django.core.files import File
 
-import sys
 import datetime
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 
 from .models import Case
 
-@api_view(['GET', 'POST'])
-def forecast(request):
-    # read data, convert to pd.Series, and add date index
-    series = []
-    if request.method == 'GET':
-        recent_case = Case.objects.all().first()
-        # print(recent_case.start_date)
-        csv_file_path = recent_case.csv_file.url
-        series = pd.read_csv(csv_file_path[1:])
-        series = series.iloc[:, 0]
-        series.index = pd.date_range(start=recent_case.start_date, periods=len(series), freq='M')
-
-    elif request.method == 'POST':
-        series = pd.Series(request.data['cases'])
-        print('isNull', pd.isnull(request.data['cases'][-1]))
-        series.index = pd.date_range(start=datetime.date(2010, 1, 1), periods=len(request.data['cases']), freq='M')
-
+def generate_forecast(series):
     # generate training and testing data
     seventy_percent = int(((len(series)) / 10) * 7.5)
     train = series[:seventy_percent]
@@ -44,7 +27,7 @@ def forecast(request):
     # forecast
     forecast = pd.Series(final_model.forecast(12), name='Forecast')
 
-    data = {
+    return {
         "actual": {
             "name": "Actual",
             "startDate": [series.index[0].year, series.index[0].month, series.index[0].day],
@@ -67,6 +50,23 @@ def forecast(request):
         }
     }
 
+@api_view(['GET', 'POST'])
+def forecast(request):
+    # read data, convert to pd.Series, and add date index
+    series = []
+    if request.method == 'GET':
+        recent_case = Case.objects.all().first()
+        csv_file_path = recent_case.csv_file.url
+        series = pd.read_csv(csv_file_path[1:])
+        series = series.iloc[:, 0]
+        series.index = pd.date_range(start=recent_case.start_date, periods=len(series), freq='M')
+
+    elif request.method == 'POST':
+        series = pd.Series(request.data['cases'])
+        start_date = datetime.datetime.strptime("{}-{}-{}".format(request.data['startDate'][0], request.data['startDate'][1], request.data['startDate'][2]), '%Y-%m-%d').date()
+        series.index = pd.date_range(start=start_date , periods=len(request.data['cases']), freq='M')
+
+    data = generate_forecast(series)
     return Response(data)
 
 @api_view(['POST'])
@@ -87,4 +87,12 @@ def update_table(request):
     new_record.csv_file.save("new.csv", myfile)
     new_record.save()
 
-    return Response()
+    # the same from GET method in forecast view
+    recent_case = Case.objects.all().first()
+    csv_file_path = recent_case.csv_file.url
+    series = pd.read_csv(csv_file_path[1:])
+    series = series.iloc[:, 0]
+    series.index = pd.date_range(start=recent_case.start_date, periods=len(series), freq='M')
+
+    data = generate_forecast(series)
+    return Response(data)

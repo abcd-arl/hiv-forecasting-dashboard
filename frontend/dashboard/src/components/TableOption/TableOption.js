@@ -1,81 +1,22 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import axios from 'axios';
+
 const isValid = (value) => value === 'NaN' || (!isNaN(value) && value > 0);
 
-function displayAlert(type, message) {
-	console.log(type, message);
-}
-
-export default function TableOption({ table, dispatch, setData, cookies, isAdmin, updateTableAsAdmin, startDate }) {
+export default function TableOption({
+	table,
+	dispatch,
+	setData,
+	cookies,
+	isAdmin,
+	updateTableAsAdmin,
+	startDate,
+	setIsLoadingCharts,
+	displayAlert,
+}) {
 	const inputNumRef = useRef(null);
 	const inputDateRef = useRef(null);
-
-	function handleOnAdd(e) {
-		try {
-			const numOfCellsToAdd = parseInt(inputNumRef.current.value);
-			if (!isValid(numOfCellsToAdd)) throw 'Please enter a positive integer number.';
-			dispatch({ type: 'add', numOfCellsToAdd: numOfCellsToAdd });
-		} catch (error) {
-			// displayAlert
-			console.log('Invalid input. ' + error);
-		}
-	}
-
-	function handleOnSave(e) {
-		if (table.activity.status === 'editing') dispatch({ type: 'pre-save' });
-		else dispatch({ type: 'save' });
-	}
-
-	function handleOnUpdateTable(e) {
-		updateTableAsAdmin(inputDateRef.current.value);
-	}
-
-	function handleOnGenerateForecast(e) {
-		const message =
-			'It seems you still have unsaved changes. The saved values will be used for generating the forecast. Do you still want to continue?';
-		if (!table.isSaved && !window.confirm(message)) return;
-
-		const cases = table.finalValues.map((value) => parseInt(value));
-		console.log('cases', cases);
-		axios
-			.post('http://localhost:8000/api/forecast/', {
-				cases: cases,
-			})
-			.then((response) => {
-				console.log(response);
-				setData(response.data);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				// displayAlert
-			});
-	}
-
-	function handleOnUpdateTable() {
-		const cases = table.finalValues.map((value) => parseInt(value));
-		axios
-			.post(
-				'http://localhost:8000/api/update-table/',
-				{
-					cases: cases,
-					startDate: inputDateRef.current.value,
-				},
-				{
-					headers: {
-						Authorization: `Token ${cookies.token}`,
-					},
-				}
-			)
-			.then((response) => {
-				console.log('success', response);
-				// displayAlert
-				// setData(response.data);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				// displayAlert
-			});
-	}
+	const [isInputDateEmpty, setIsInputDateEmpty] = useState(false);
 
 	const toDateStrFormat = (array) =>
 		`${array[0]}-${String(array[1]).length === 2 ? array[1] : '0' + array[1]}-${
@@ -83,9 +24,20 @@ export default function TableOption({ table, dispatch, setData, cookies, isAdmin
 		}`;
 
 	return (
-		<div className="mb-2 flex justify-between text-xs">
+		<div className="w-[98%] mx-auto mb-2 flex justify-between text-xs">
 			<div className="flex">
-				<button className="px-2 py-1.5 mr-1.5 bg-slate-500 rounded font-bold text-white" onClick={handleOnAdd}>
+				<button
+					className="px-2 py-1.5 mr-1.5 bg-slate-500 disabled:bg-slate-200 rounded font-bold text-white"
+					disabled={['editing', 'saving'].includes(table.activity.status)}
+					onClick={handleOnSelect}
+				>
+					{table.activity.status === 'selecting' ? 'Cancel' : 'Select'}
+				</button>
+				<button
+					className="px-2 py-1.5 mr-1.5 bg-slate-500 disabled:bg-slate-200 rounded font-bold text-white"
+					onClick={handleOnAdd}
+					disabled={table.activity.status === 'editing'}
+				>
 					Add
 				</button>
 				<input className="w-9 mr-1.5 px-2 border border-slate-300 " ref={inputNumRef} type="text" defaultValue={1} />
@@ -106,8 +58,13 @@ export default function TableOption({ table, dispatch, setData, cookies, isAdmin
 							ref={inputDateRef}
 							type="date"
 							defaultValue={toDateStrFormat(startDate)}
+							onChange={handleOnChangeInputDate}
 						/>
-						<button className="px-2 py-1.5 bg-slate-500 rounded font-bold text-white" onClick={handleOnUpdateTable}>
+						<button
+							className="px-2 py-1.5 bg-slate-500 rounded font-bold text-white disabled:bg-slate-200"
+							onClick={handleOnUpdateTable}
+							disabled={isInputDateEmpty}
+						>
 							Update Table
 						</button>
 					</>
@@ -122,4 +79,96 @@ export default function TableOption({ table, dispatch, setData, cookies, isAdmin
 			</div>
 		</div>
 	);
+
+	function handleOnChangeInputDate(e) {
+		if (inputDateRef.current.value === '') setIsInputDateEmpty((state) => true);
+		else setIsInputDateEmpty((state) => false);
+	}
+
+	function handleOnAdd(e) {
+		try {
+			const numOfCellsToAdd = parseInt(inputNumRef.current.value);
+			if (!isValid(numOfCellsToAdd)) throw 'Please enter a positive integer number.';
+			dispatch({ type: 'add', numOfCellsToAdd: numOfCellsToAdd });
+		} catch (error) {
+			displayAlert('danger', error);
+		}
+	}
+
+	function handleOnSave(e) {
+		if (table.activity.status === 'editing') dispatch({ type: 'pre-save' });
+		else dispatch({ type: 'save' });
+	}
+
+	function handleOnSelect(e) {
+		table.activity.status === 'selecting' ? dispatch({}) : dispatch({ type: 'select' });
+	}
+
+	function handleOnUpdateTable(e) {
+		updateTableAsAdmin(inputDateRef.current.value);
+	}
+
+	function handleOnProgressAxios(progress) {
+		console.log(progress);
+	}
+
+	function handleOnGenerateForecast(e) {
+		const message =
+			'It seems you still have unsaved changes. The saved values will be used for generating the forecast. Do you still want to continue?';
+		if (!table.isSaved && !window.confirm(message)) return;
+		setIsLoadingCharts(true);
+		const cases = table.finalValues.map((value) => parseInt(value));
+		console.log('cases', cases);
+		axios
+			.post(
+				'http://localhost:8000/api/forecast/',
+				{
+					cases: cases,
+					startDate: startDate,
+				},
+				{
+					onUploadProgress: handleOnProgressAxios,
+				}
+			)
+			.then((response) => {
+				console.log(response);
+				setData(response.data);
+				setIsLoadingCharts(false);
+			})
+			.catch((error) => {
+				setIsLoadingCharts(false);
+				console.log(error.message);
+				displayAlert('danger', 'An error occured while generating the forecast.');
+			});
+	}
+
+	function handleOnUpdateTable() {
+		setIsLoadingCharts(true);
+		const cases = table.finalValues.map((value) => parseInt(value));
+
+		axios
+			.post(
+				'http://localhost:8000/api/update-table/',
+				{
+					cases: cases,
+					startDate: inputDateRef.current.value,
+				},
+				{
+					headers: {
+						Authorization: `Token ${cookies.token}`,
+					},
+				}
+			)
+			.then((response) => {
+				setIsLoadingCharts(false);
+				console.log('success', response);
+				displayAlert('success', 'The table has been successfuly updated.');
+				setData(response.data);
+			})
+			.catch((error) => {
+				setIsLoadingCharts(false);
+				console.log(error.message);
+				displayAlert('danger', 'An error occured while updating the table.');
+			});
+	}
 }

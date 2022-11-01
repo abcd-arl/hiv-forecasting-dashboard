@@ -1,13 +1,8 @@
 import { useState, useEffect, useReducer } from 'react';
-
+import { Store } from 'react-notifications-component';
 import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
-/*
-dataset: just one dataset with cases and starting date
-*/
-
-const COL_NUM_PER_ROW = 12;
 const isValid = (value) => value === 'NaN' || (!isNaN(value) && value > 0);
 const isEmpty = (obj) => Object.keys(obj).length === 0;
 const reducer = (state, action) => {
@@ -140,12 +135,37 @@ const reducer = (state, action) => {
 				},
 			};
 
+		case 'select':
+			return {
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
+				isSaved: state.isSaved,
+				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
+				activity: {
+					status: 'selecting',
+					startIndex: action.index,
+				},
+			};
+
 		default:
-			return state;
+			return {
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				startDate: [...state.startDate],
+				isSaved: state.isSaved,
+				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
+				activity: {
+					status: 'standby',
+					startIndex: action.index,
+				},
+			};
 	}
 };
 
-export default function Table({ dataset, setData, isAdmin, cookies, updateTableAsAdmin }) {
+export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, cookies, updateTableAsAdmin }) {
 	const [defValLastIndex, setDefValLastIndex] = useState(null);
 	const [table, dispatch] = useReducer(reducer, {
 		values: [],
@@ -159,11 +179,13 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 			startIndex: [],
 		},
 	});
+	const [isBeingHovered, setIsBeingHovered] = useState(false);
 
 	useEffect(() => {
 		console.group('Table Values');
 		console.log('dataset', dataset);
 		console.log('cookies', cookies);
+		console.log('history', table.history);
 		console.log('startDate', table.startDate);
 		console.log('found errors', table.foundErrors);
 		console.log('initial table values:', table.values);
@@ -175,18 +197,18 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 	});
 
 	useEffect(() => {
-		if (!isEmpty(table.foundErrors)) {
-			// displayAlert
-		}
-
 		switch (table.activity.status) {
 			case 'initialized':
+				console.log('here');
 				setDefValLastIndex(table.values.length - 1);
 				break;
 			case 'updated':
-				if (table.isSaving) {
-					dispatch({ type: 'post-save' });
-				}
+				if (table.isSaving) dispatch({ type: 'post-save' });
+
+				break;
+			case 'saved':
+			case 'post-saved':
+				if (!isEmpty(table.foundErrors)) displayAlert('danger', 'Unable to save changes. An input value is invalid.');
 				break;
 			default:
 				return;
@@ -195,18 +217,72 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 
 	useEffect(() => {
 		dispatch({ type: 'initialize', dataset: dataset });
-	}, []);
+	}, [dataset]);
 
-	function updateTableAsAdmin(startDate) {}
+	function handleEmptyCellOnMouseOver(e) {
+		setIsBeingHovered((state) => true);
+	}
+
+	function handleEmptyCellOnMouseOut(e) {
+		setIsBeingHovered((state) => false);
+	}
+
+	function displayAlert(type, message) {
+		Store.addNotification({
+			message: message,
+			type: type,
+			insert: 'top',
+			container: 'bottom-left',
+			animationIn: ['animate__animated', 'animate__fadeInUp'],
+			animationOut: ['animate__animated', 'animate__fadeOut'],
+			dismiss: {
+				duration: 4000,
+				// onScreen: true,
+				showIcon: true,
+				pauseOnHover: true,
+			},
+		});
+	}
 
 	const tableRows = (() => {
 		let startYear = table.startDate[0];
 		const rows = [];
-		let row = [];
+		let row =
+			table.startDate[1] > 1
+				? [
+						<td className="w-16 py-2 text-xs text-center bg-slate-200 border border-slate-300" key={startYear}>
+							{startYear++}
+						</td>,
+				  ].concat(
+						Array(table.startDate[1] - 1).fill(
+							<td
+								className="border border-slate-300 bg-slate-50"
+								onMouseEnter={handleEmptyCellOnMouseOver}
+								onMouseOut={handleEmptyCellOnMouseOut}
+							></td>
+						)
+				  )
+				: [];
 
 		for (let i = 0; i < table.values.length; i++) {
-			if (i % 12 === 0) {
-				if (!isEmpty(row)) rows.push(<tr key={'row-' + i / 12}>{row}</tr>);
+			if (row.length % 13 === 0) {
+				if (!isEmpty(row))
+					rows.push(
+						<tr
+							key={'row-' + i / 12}
+							className={`${
+								!isAdmin && i <= defValLastIndex
+									? ''
+									: `${
+											isBeingHovered
+												? ''
+												: 'peer peer-hover:[&>td.editable]:border-2 peer-hover:[&>td.editable]:border-slate-500'
+									  }`
+							} `}
+						>
+							{row}
+						</tr>
+					);
 				row = [
 					<td className="w-16 py-2 text-xs text-center bg-slate-200 border border-slate-300" key={startYear}>
 						{startYear++}
@@ -228,15 +304,31 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 					cellStatus={cellStatus}
 					tableStatus={table.activity.status}
 					isStartingCell={table.activity.startIndex === i}
+					setIsBeingHovered={
+						!isAdmin && i >= defValLastIndex - ((defValLastIndex + table.startDate[1]) % 12) + 1 && i <= defValLastIndex
+							? setIsBeingHovered
+							: null
+					}
+					displayAlert={displayAlert}
 				/>
 			);
 		}
-		if (!isEmpty(row)) rows.push(<tr key={'row-' + rows.length + 1}>{row}</tr>);
+
+		if (!isEmpty(row))
+			rows.push(
+				<tr
+					key={'row-' + rows.length + 1}
+					className={'peer peer-hover:[&>td.editable]:border-2 peer-hover:[&>td.editable]:border-slate-500'}
+				>
+					{row}
+				</tr>
+			);
+
 		return rows;
 	})();
 
 	return (
-		<>
+		<div className="w-[100%]">
 			<TableOption
 				table={table}
 				dispatch={dispatch}
@@ -245,9 +337,11 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 				isAdmin={isAdmin}
 				updateTableAsAdmin={updateTableAsAdmin}
 				startDate={dataset.startDate}
+				setIsLoadingCharts={setIsLoadingCharts}
+				displayAlert={displayAlert}
 			/>
 			<div className="w-full pb-2 overflow-auto">
-				<table className="w-full mx-auto table-fixed border-collapse text-xs">
+				<table className="w-[98%] mx-auto table-fixed border-collapse text-xs">
 					<thead>
 						<tr>
 							<th className="w-16 py-2 bg-slate-200 border border-slate-300">Year</th>
@@ -261,6 +355,6 @@ export default function Table({ dataset, setData, isAdmin, cookies, updateTableA
 					<tbody>{tableRows}</tbody>
 				</table>
 			</div>
-		</>
+		</div>
 	);
 }

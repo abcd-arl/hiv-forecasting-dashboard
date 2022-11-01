@@ -1,82 +1,56 @@
 import { useState, useEffect, useReducer } from 'react';
+
 import TableOption from '../TableOption/TableOption';
 import Cell from '../Cell/Cell';
 
-const getTableLastIndex = function (tableValues) {
-	return [tableValues.length - 1, tableValues[tableValues.length - 1].length - 1];
-};
+/*
+dataset: just one dataset with cases and starting date
+*/
 
-const getTableNextIndex = function (tableValues) {
-	const lastColPerRow = 3;
-	const [lastRow, lastCol] = getTableLastIndex(tableValues);
-
-	if (lastCol < lastColPerRow) return [tableValues.length - 1, tableValues[tableValues.length - 1].length];
-	else return [tableValues.length, 1];
-};
-
+const COL_NUM_PER_ROW = 12;
+const isValid = (value) => value === 'NaN' || (!isNaN(value) && value > 0);
+const isEmpty = (obj) => Object.keys(obj).length === 0;
 const reducer = (state, action) => {
-	const lastColPerRow = 3;
-
-	function newHistory(history, newContent = null) {
-		if ((state.activity.status === 'post-saved' && state.history.length) || newContent === null)
-			return structuredClone(history);
-		return structuredClone([...state.history, newContent]);
-	}
-
 	switch (action.type) {
 		case 'initialize':
 			return {
-				values: [
-					[2010, 1, 2, 3],
-					[2011, 4, 5, 6],
-					[2011, 7, 8],
-				],
-				finalValues: [
-					[2010, 1, 2, 3],
-					[2011, 4, 5, 6],
-					[2011, 7, 8],
-				],
+				values: [...action.dataset.cases],
+				finalValues: [...action.dataset.cases],
+				history: [...state.history],
+				startDate: [...action.dataset.startDate],
 				isSaved: true,
 				isSaving: false,
-				history: structuredClone(state.history),
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'initialized',
-					startIndex: [0, 0],
+					startIndex: 0,
 				},
 			};
 
 		case 'add':
-			const tableValuesAdd = structuredClone(state.values);
-
-			let numOfCellsToAdd = action.numOfCellsToAdd;
-			while (numOfCellsToAdd) {
-				const [lastRow, lastCol] = getTableLastIndex(tableValuesAdd);
-
-				if (lastCol < lastColPerRow) tableValuesAdd[lastRow].push('');
-				else tableValuesAdd.push([tableValuesAdd[lastRow][0] + 1, '']);
-
-				numOfCellsToAdd = numOfCellsToAdd - 1;
-			}
-
 			return {
-				values: tableValuesAdd,
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values].concat(Array(action.numOfCellsToAdd).fill('')),
+				finalValues: [...state.finalValues],
+				history: [...state.history, { values: [...state.values], activity: state.activity }],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
-				history: newHistory(state.history, { values: state.values, activity: state.activity }),
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'editing',
-					startIndex: getTableNextIndex(state.values),
+					startIndex: state.values.length,
 				},
 			};
 
 		case 'pre-save':
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.finalValues),
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				history: [...state.history, { values: [...state.values], activity: state.activity }],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: true,
-				history: newHistory(state.history),
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'saving',
 					startIndex: state.activity.startIndex,
@@ -84,72 +58,73 @@ const reducer = (state, action) => {
 			};
 
 		case 'update':
-			const tableValuesUpdate = structuredClone(state.values);
-			tableValuesUpdate[action.index[0]][action.index[1]] = action.value;
+			const valuesForUpdate = [...state.values];
+			valuesForUpdate[action.index] = action.value;
+
+			if (action.index in state.foundErrors && isValid(action.value)) delete state.foundErrors[action.index];
+			else if (!(action.index in state.foundErrors) && !isValid(action.value)) state.foundErrors[action.index] = true;
+
 			return {
-				values: tableValuesUpdate,
-				finalValues: structuredClone(state.finalValues),
+				values: valuesForUpdate,
+				finalValues: [...state.finalValues],
+				history: state.isSaving
+					? [...state.history]
+					: [...state.history, { values: [...state.values], activity: state.activity }],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: state.isSaving,
-				history: state.isSaving
-					? newHistory(state.history)
-					: newHistory(state.history, { values: structuredClone(state.values), activity: state.activity }),
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'updated',
-					startIndex: state.activity.startIndex,
+					startIndex: null,
 				},
 			};
 
 		case 'save':
+			let valuesForSave = [...state.values];
+			if (!isEmpty(state.foundErrors)) valuesForSave = [...state.finalValues];
+
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.values),
-				history: newHistory(state.history),
-				isSaved: true,
+				values: [...state.values],
+				finalValues: valuesForSave,
+				history: [...state.history],
+				startDate: [...state.startDate],
+				isSaved: isEmpty(state.foundErrors),
 				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'saved',
-					startIndex: [null, null],
+					startIndex: null,
 				},
 			};
 
 		case 'post-save':
+			let valuesForPostSave = [...state.values];
+			if (!isEmpty(state.foundErrors)) valuesForPostSave = [...state.finalValues];
+
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.values),
-				history: newHistory(state.history, {
-					values: state.values,
-					activity: { status: 'editing', startIndex: state.activity.startIndex },
-				}),
-				isSaved: true,
+				values: [...state.values],
+				finalValues: valuesForPostSave,
+				history: [...state.history],
+				startDate: [...state.startDate],
+				isSaved: isEmpty(state.foundErrors),
 				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'post-saved',
-					startIndex: [null, null],
-				},
-			};
-
-		case 'undo':
-			const lastChanges = structuredClone(state.history.slice(-1)[0]);
-			return {
-				values: lastChanges.values,
-				finalValues: structuredClone(state.finalValues),
-				history: newHistory(state.history.slice(0, state.history.length - 1)),
-				isSaved: false,
-				isSaving: false,
-				activity: {
-					status: lastChanges.activity.status,
-					startIndex: lastChanges.activity.startIndex,
+					startIndex: null,
 				},
 			};
 
 		case 'edit':
 			return {
-				values: structuredClone(state.values),
-				finalValues: structuredClone(state.finalValues),
-				history: newHistory(state.history, { values: state.values, activity: state.activity }),
+				values: [...state.values],
+				finalValues: [...state.finalValues],
+				history: [...state.history, { values: [...state.values], activity: state.activity }],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'editing',
 					startIndex: action.index,
@@ -157,24 +132,36 @@ const reducer = (state, action) => {
 			};
 
 		case 'delete':
-			let tableValuesDelete = [[]];
-			if (action.index[1] === 1) {
-				tableValuesDelete = state.values.slice(0, action.index[0]);
-			} else {
-				tableValuesDelete = state.values.slice(0, action.index[0] + 1);
-				tableValuesDelete[action.index[0]] = state.values[action.index[0]].slice(0, action.index[1]);
+			for (let key in state.foundErrors) {
+				if (parseInt(key) <= action.index) delete state.foundErrors[key];
 			}
 
 			return {
-				values: structuredClone(tableValuesDelete),
-				finalValues: structuredClone(state.finalValues),
-				history: newHistory(state.history, { values: state.values, activity: state.activity }),
+				values: [...state.values.slice(0, action.index)],
+				finalValues: [...state.finalValues],
+				history: [...state.history, { values: [...state.values], activity: state.activity }],
+				startDate: [...state.startDate],
 				isSaved: false,
 				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
 				activity: {
 					status: 'deleted',
-					startIndex: [null, null],
+					startIndex: null,
 				},
+			};
+
+		case 'undo':
+			const undo = state.history.slice(-1)[0];
+			console.log(undo);
+			return {
+				values: [...undo.values],
+				finalValues: [...state.finalValues],
+				history: [...state.history.slice(0, state.history.length - 1)],
+				startDate: [...state.startDate],
+				isSaved: false,
+				isSaving: false,
+				foundErrors: structuredClone(state.foundErrors),
+				activity: undo.activity,
 			};
 
 		default:
@@ -182,23 +169,30 @@ const reducer = (state, action) => {
 	}
 };
 
-export default function Table({ isAdmin }) {
-	const [defValLastIndex, setDefValLastIndex] = useState([null, null]);
+export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, cookies, updateTableAsAdmin }) {
+	const [defValLastIndex, setDefValLastIndex] = useState(null);
 	const [table, dispatch] = useReducer(reducer, {
-		values: [[]],
-		finalValues: [[]],
+		values: [],
+		finalValues: [],
+		history: [],
+		startDate: [],
 		isSaved: true,
 		isSaving: false,
-		history: [],
+		foundErrors: {},
 		activity: {
 			status: 'standby',
 			startIndex: [],
 		},
 	});
+	const [isBeingHovered, setIsBeingHovered] = useState(false);
 
 	useEffect(() => {
 		console.group('Table Values');
+		console.log('dataset', dataset);
+		console.log('cookies', cookies);
 		console.log('history', table.history);
+		console.log('startDate', table.startDate);
+		console.log('found errors', table.foundErrors);
 		console.log('initial table values:', table.values);
 		console.log('initial table status:', table.activity.status, table.activity.startIndex);
 		console.log('final table values:', table.finalValues);
@@ -208,9 +202,14 @@ export default function Table({ isAdmin }) {
 	});
 
 	useEffect(() => {
+		if (!isEmpty(table.foundErrors)) {
+			// displayAlert
+		}
+
 		switch (table.activity.status) {
 			case 'initialized':
-				setDefValLastIndex(getTableLastIndex(table.values));
+				console.log('here');
+				setDefValLastIndex(table.values.length - 1);
 				break;
 			case 'updated':
 				if (table.isSaving) {
@@ -223,64 +222,126 @@ export default function Table({ isAdmin }) {
 	}, [table]);
 
 	useEffect(() => {
-		dispatch({ type: 'initialize' });
-	}, []);
+		dispatch({ type: 'initialize', dataset: dataset });
+	}, [dataset]);
+
+	function handleEmptyCellOnMouseOver(e) {
+		setIsBeingHovered((state) => true);
+	}
+
+	function handleEmptyCellOnMouseOut(e) {
+		setIsBeingHovered((state) => false);
+	}
 
 	const tableRows = (() => {
-		const lastRow = getTableLastIndex(table.values)[0];
-		const [defValueLastRow, defValueLastCol] = defValLastIndex;
+		let startYear = table.startDate[0];
 		const rows = [];
+		let row =
+			table.startDate[1] > 1
+				? [
+						<td className="w-16 py-2 text-xs text-center bg-slate-200 border border-slate-300" key={startYear}>
+							{startYear++}
+						</td>,
+				  ].concat(
+						Array(table.startDate[1] - 1).fill(
+							<td
+								className="border border-slate-300 bg-slate-50"
+								onMouseEnter={handleEmptyCellOnMouseOver}
+								onMouseOut={handleEmptyCellOnMouseOut}
+							></td>
+						)
+				  )
+				: [];
 
-		for (let i = 0; i <= lastRow; i++) {
-			const cols = [];
-			for (let j = 0; j <= table.values[i].length - 1; j++) {
-				let cellStatus = null;
-
-				if (j === 0) cellStatus = 'index';
-				else if (!isAdmin && (i < defValueLastRow || (i === defValueLastRow && j <= defValueLastCol)))
-					cellStatus = 'default';
-				else if (
-					i > table.activity.startIndex[0] ||
-					(i === table.activity.startIndex[0] && j >= table.activity.startIndex[1])
-				)
-					cellStatus = table.activity.status;
-				else cellStatus = 'standby';
-
-				cols.push(
-					<Cell
-						key={[i, j]}
-						dispatch={dispatch}
-						index={[i, j]}
-						initialValue={table.values[i][j]}
-						cellStatus={cellStatus}
-						tableStatus={table.activity.status}
-					/>
-				);
+		for (let i = 0; i < table.values.length; i++) {
+			if (row.length % 13 === 0) {
+				if (!isEmpty(row))
+					rows.push(
+						<tr
+							key={'row-' + i / 12}
+							className={`${
+								!isAdmin && i <= defValLastIndex
+									? ''
+									: `${
+											isBeingHovered
+												? ''
+												: 'peer peer-hover:[&>td.editable]:border-2 peer-hover:[&>td.editable]:border-slate-500'
+									  }`
+							} `}
+						>
+							{row}
+						</tr>
+					);
+				row = [
+					<td className="w-16 py-2 text-xs text-center bg-slate-200 border border-slate-300" key={startYear}>
+						{startYear++}
+					</td>,
+				];
 			}
-			rows.push(<tr key={i}>{cols}</tr>);
+
+			let cellStatus = null;
+			if (!isAdmin && i <= defValLastIndex) cellStatus = 'default';
+			else if (i >= table.activity.startIndex) cellStatus = table.activity.status;
+			else cellStatus = 'standby';
+
+			row.push(
+				<Cell
+					key={i}
+					dispatch={dispatch}
+					index={i}
+					initialValue={table.values[i]}
+					cellStatus={cellStatus}
+					tableStatus={table.activity.status}
+					isStartingCell={table.activity.startIndex === i}
+					setIsBeingHovered={
+						i >= defValLastIndex - ((defValLastIndex + table.startDate[1]) % 12) + 1 && i <= defValLastIndex
+							? setIsBeingHovered
+							: null
+					}
+				/>
+			);
 		}
+
+		if (!isEmpty(row))
+			rows.push(
+				<tr
+					key={'row-' + rows.length + 1}
+					className={'peer peer-hover:[&>td.editable]:border-2 peer-hover:[&>td.editable]:border-slate-500'}
+				>
+					{row}
+				</tr>
+			);
+
 		return rows;
 	})();
 
 	return (
-		<>
-			<table>
-				<thead>
-					<tr>
-						<th>Year</th>
-						<th>Month1</th>
-						<th>Month2</th>
-						<th>Month3</th>
-					</tr>
-				</thead>
-				<tbody>{tableRows}</tbody>
-			</table>
+		<div className="w-[100%]">
 			<TableOption
+				table={table}
 				dispatch={dispatch}
-				tableIsSaved={table.isSaved}
-				tableStatus={table.activity.status}
-				tableHasHistory={table.history.length > 0}
+				setData={setData}
+				cookies={cookies}
+				isAdmin={isAdmin}
+				updateTableAsAdmin={updateTableAsAdmin}
+				startDate={dataset.startDate}
+				setIsLoadingCharts={setIsLoadingCharts}
 			/>
-		</>
+			<div className="w-full pb-2 overflow-auto">
+				<table className="w-[98%] mx-auto table-fixed border-collapse text-xs">
+					<thead>
+						<tr>
+							<th className="w-16 py-2 bg-slate-200 border border-slate-300">Year</th>
+							{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month) => (
+								<th key={month} className="w-20 py-2 bg-slate-200 border border-slate-300">
+									{month}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>{tableRows}</tbody>
+				</table>
+			</div>
+		</div>
 	);
 }

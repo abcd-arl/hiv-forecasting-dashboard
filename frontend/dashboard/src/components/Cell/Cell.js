@@ -1,27 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 import deleteIcon from './icon-close.svg';
-import editIcon from './icon-edit.svg';
+import editIcon from './icons8-edit(1).svg';
 // import './cell.css';
 
-export default function Cell({ dispatch, index, initialValue, cellStatus, tableStatus, isStartingCell }) {
+export default function Cell({
+	dispatch,
+	index,
+	initialValue,
+	cellStatus,
+	tableStatus,
+	isStartingCell,
+	setIsBeingHovered,
+	displayAlert,
+}) {
 	const [cell, setCell] = useState({ value: initialValue, isToUpdate: false });
-	const [isEditing, setIsEditing] = useState(initialValue === '');
+	const [isEditing, setIsEditing] = useState(cellStatus === 'editing');
+	const [isToUpdateAutoFocus, setIsToUpdateAutoFocus] = useState(false);
 	const inputRef = useRef(null);
 
 	useEffect(() => {
-		// f (cellStatus !== 'index' && cellStatus !== 'default' && cellStatus !== 'initialized') {
-		// 	console.group('cell', index);
-		// 	console.log('initial value', initialValue);
-		// 	console.log('cell value', cell.value);
-		// 	console.log('cell status', cellStatus);
-		// 	console.log('table status', tableStatus);
-		// 	console.log('isEditing', isEditing);
-		// 	console.groupEnd();
-		// }i
-
-		if (cellStatus === 'editing' && tableStatus === 'editing' && !isEditing) {
-			setIsEditing(true);
+		if (cellStatus !== 'index' && cellStatus !== 'default' && cellStatus !== 'initialized') {
+			console.group('cell', index);
+			console.log('initial value', initialValue);
+			console.log('cell value', cell.value);
+			console.log('cell status', cellStatus);
+			console.log('table status', tableStatus);
+			console.log('isEditing', isEditing);
+			console.groupEnd();
 		}
+
+		if (cellStatus === 'editing' && tableStatus === 'editing' && !isEditing) setIsEditing(true);
 
 		if (tableStatus === 'saving' && isEditing) {
 			inputRef.current.focus();
@@ -37,7 +45,8 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 
 	function handleInputOnBlur(e) {
 		if (tableStatus === 'editing' && isEditing) return;
-		setIsEditing(!isEditing);
+		setIsEditing(false);
+		setIsToUpdateAutoFocus(false);
 		setCell({ value: e.target.value ? e.target.value : 'NaN', isToUpdate: true });
 	}
 
@@ -45,18 +54,27 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		setCell({ value: e.target.value, isToUpdate: false });
 	}
 
+	function handleDataOnMouseOver(e) {
+		if (setIsBeingHovered !== null) setIsBeingHovered((state) => true);
+	}
+
+	function handleDataOnMouseOut(e) {
+		if (setIsBeingHovered !== null) setIsBeingHovered((state) => false);
+	}
+
 	function handleDataOnDoubleClick(e) {
 		if (cellStatus === 'default') {
-			console.log('Cannot edit default values.');
+			displayAlert('warning', 'Cannot edit default values.');
 			return;
 		}
 
 		if (tableStatus === 'editing') {
-			console.log('Please finish editing first.');
+			displayAlert('warning', 'Please finish editing first.');
 			return;
 		}
 
 		setIsEditing(true);
+		setIsToUpdateAutoFocus(true);
 	}
 
 	function handleDataOnEdit(e) {
@@ -68,7 +86,18 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 		if (window.confirm(alertText)) dispatch({ type: 'delete', index: index });
 	}
 
-	if (cellStatus === 'filler') return <td></td>;
+	const cellOptions = (function () {
+		return (
+			<div className="hidden group-hover:flex flex-col gap-0.5 absolute top-[-.6rem] right-[-.55rem] z-50">
+				<button className="w-4 p-0.5 bg-slate-300 border border-slate-400 rounded-full" onClick={handleDataOnDelete}>
+					<img className="w-full" src={deleteIcon} />
+				</button>
+				<button className="w-4 p-0.5 bg-slate-300 border border-slate-400 rounded-full" onClick={handleDataOnEdit}>
+					<img className="w-full" src={editIcon} />
+				</button>
+			</div>
+		);
+	})();
 
 	if (isEditing) {
 		return (
@@ -77,38 +106,33 @@ export default function Cell({ dispatch, index, initialValue, cellStatus, tableS
 					className="w-[95%] h-[1.7rem] m-auto block text-center border-b-2 border-blue-500 focus:border-none"
 					ref={inputRef}
 					placeholder="NaN"
-					defaultValue={initialValue}
+					defaultValue={cell.value}
 					onChange={handleInputOnChange}
 					onBlur={handleInputOnBlur}
-					autoFocus={isStartingCell}
+					autoFocus={isStartingCell || isToUpdateAutoFocus}
 				></input>
 			</td>
 		);
 	}
 
-	const cellOptions = (function () {
-		return (
-			<div className="hidden group-hover:flex flex-col absolute top-[-.5rem] right-[-.65rem] z-50">
-				<button className="w-4" onClick={handleDataOnDelete}>
-					<img className="w-full" src={deleteIcon} />
-				</button>
-				<button className="w-4" onClick={handleDataOnEdit}>
-					<img className="w-full" src={editIcon} />
-				</button>
-			</div>
-		);
-	})();
-
 	return (
 		<td
 			className={`border border-slate-300 ${
-				cellStatus === 'default' ? 'bg-slate-50' : ' hover:border-2 hover:border-green-600 group'
-			} peer-[]`}
+				cellStatus === 'default'
+					? 'bg-slate-50'
+					: `${
+							tableStatus === 'selecting'
+								? 'editable hover:border-2 hover:border-slate-500 group peer peer-hover:border-2 peer-hover:border-slate-500'
+								: ''
+					  }`
+			}`}
 			onDoubleClick={handleDataOnDoubleClick}
+			onMouseEnter={handleDataOnMouseOver}
+			onMouseLeave={handleDataOnMouseOut}
 		>
 			<div className={`${cellStatus === 'index' ? '' : 'cell'}, text-xs text-center relative`}>
-				{initialValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-				{cellStatus !== 'index' && cellStatus !== 'default' && cellOptions}
+				{cell.value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+				{cellStatus !== 'index' && cellStatus !== 'default' && tableStatus === 'selecting' && cellOptions}
 			</div>
 		</td>
 	);

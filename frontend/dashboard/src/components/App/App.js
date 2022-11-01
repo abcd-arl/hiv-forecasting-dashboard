@@ -9,12 +9,17 @@ import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 import axios from 'axios';
+import { ReactNotifications } from 'react-notifications-component';
+import 'react-notifications-component/dist/theme.css';
+import 'animate.css/animate.min.css';
+
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
 function App() {
 	const [data, setData] = useState([]);
 	const [cookies, setCookie, removeCookie] = useCookies(['token']);
+	const [isLoadingCharts, setIsLoadingCharts] = useState(false);
 
 	useEffect(() => {
 		axios
@@ -56,50 +61,69 @@ function App() {
 
 		switch (type) {
 			case 'admin':
-				if (cookies.token) return <Table dataset={data.actual} setData={setData} isAdmin={true} cookies={cookies} />;
+				if (cookies.token)
+					return (
+						<div className="relative w-full h-fit">
+							{isLoadingCharts && <Loading />}
+							<div className={isLoadingCharts ? `opacity-50 pointer-events-none` : ''}>
+								<Table
+									dataset={data.actual}
+									setData={setData}
+									isAdmin={true}
+									cookies={cookies}
+									setIsLoadingCharts={setIsLoadingCharts}
+								/>
+							</div>
+						</div>
+					);
 				return <LoginForm setCookie={setCookie} logout={handleOnLogout} />;
 			default:
 				return (
 					<>
-						<div className="mb-4 md:flex gap-4">
-							<div className="md:w-2/4">
-								<LineChart
-									datasets={[data.actual, data.validation]}
-									colors={['#1d4ed8', '#e11d48']}
-									title={'Actual Values vs Model Forecasted Values'}
-								/>
-							</div>
-							<div className="md:w-2/4 flex flex-col font-helvetica">
-								<span className="font-bold text-[11px] text-[#666] text-center relative top-3">
-									Performance Measure
-								</span>
-								<div className="min-h-[170px] h-[80%] w-[90%] m-auto mr-[-.15rem] bg-40 bg-bottom bg-gradient-radial flex items-center">
-									<div className="w-full flex gap-2 justify-between">
-										<div className="flex flex-col">
-											<span className="text-xs text-rose-600 font-bold">MAE</span>
-											<span className="text-5xl text-blue-700">62.00</span>
+						<div className="relative w-full h-fit">
+							{isLoadingCharts && <Loading />}
+							<div className={isLoadingCharts ? `opacity-50` : ''}>
+								<div className="mb-4 md:flex gap-4">
+									<div className="md:w-2/4">
+										<LineChart
+											datasets={[data.actual, data.validation]}
+											colors={['#1d4ed8', '#e11d48']}
+											title={'Actual Values vs Model Forecasted Values'}
+										/>
+									</div>
+									<div className="md:w-2/4 flex flex-col font-helvetica">
+										<span className="font-bold text-[11px] text-[#666] text-center relative top-3">
+											Performance Measure
+										</span>
+										<div className="min-h-[170px] h-[80%] w-[90%] m-auto mr-[-.15rem] bg-40 bg-bottom bg-gradient-radial flex items-center">
+											<div className="w-full flex gap-2 justify-between">
+												<div className="flex flex-col">
+													<span className="text-xs text-rose-600 font-bold">MAE</span>
+													<span className="text-5xl text-blue-700">62.00</span>
+												</div>
+												<div className="flex flex-col">
+													<span className="text-xs text-rose-600 font-bold">MSE</span>
+													<span className="text-5xl text-blue-700">92.00</span>
+												</div>
+												<div className="flex flex-col">
+													<span className="text-xs text-rose-600 font-bold">MAPE</span>
+													<span className="text-5xl text-blue-700">22%</span>
+												</div>
+											</div>
 										</div>
-										<div className="flex flex-col">
-											<span className="text-xs text-rose-600 font-bold">MSE</span>
-											<span className="text-5xl text-blue-700">92.00</span>
-										</div>
-										<div className="flex flex-col">
-											<span className="text-xs text-rose-600 font-bold">MAPE</span>
-											<span className="text-5xl text-blue-700">22%</span>
-										</div>
+									</div>
+								</div>
+								<div className="mb-10 md:flex gap-4">
+									<div className="md:w-2/4">
+										<BarChart dataset={data.forecast} title={'12-Month Forecast'} />
+									</div>
+									<div className="md:w-2/4">
+										<LineChart datasets={[data.residuals]} colors={['#e11d48']} title={'Residuals'} />
 									</div>
 								</div>
 							</div>
 						</div>
-						<div className="mb-10 md:flex gap-4">
-							<div className="md:w-2/4">
-								<BarChart dataset={data.forecast} title={'12-Month Forecast'} />
-							</div>
-							<div className="md:w-2/4">
-								<LineChart datasets={[data.residuals]} colors={['#e11d48']} title={'Residuals'} />
-							</div>
-						</div>
-						<Table dataset={data.actual} setData={setData} />
+						<Table dataset={data.actual} setData={setData} setIsLoadingCharts={setIsLoadingCharts} />
 					</>
 				);
 		}
@@ -108,7 +132,8 @@ function App() {
 	return (
 		<div className="my-10 w-full">
 			<div className="w-[96%] mx-auto">
-				<div className="w-full max-w-[1025px] mx-auto">
+				<ReactNotifications />
+				<div className="w-full max-w-[1050px] mx-auto">
 					<header className="mb-10 flex justify-between items-end">
 						<h1 className="text-4xl font-bold">
 							<span className="text-rose-500">HIV</span>Forecasting
