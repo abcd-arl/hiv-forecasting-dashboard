@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import deleteIcon from './icon-close.svg';
-import editIcon from './icons8-edit(1).svg';
+import editIcon from './icon-edit.svg';
 // import './cell.css';
 
 export default function Cell({

@@ -219,7 +219,7 @@ export default function Table({ dataset, setData, setIsLoadingCharts, isAdmin, c
 
 	useEffect(() => {
 		if (isAdmin) dispatch({ type: 'initialize', dataset: dataset });
-	}, [dataset]);
+	}, [dataset, isAdmin]);
 
 	useEffect(() => {
 		dispatch({ type: 'initialize', dataset: dataset });
