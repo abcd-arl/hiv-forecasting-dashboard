@@ -13,9 +13,6 @@ import { ReactNotifications } from 'react-notifications-component';
 import 'react-notifications-component/dist/theme.css';
 import 'animate.css/animate.min.css';
 
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
-
 function App() {
 	const [data, setData] = useState([]);
 	const [cookies, setCookie, removeCookie] = useCookies(['token']);
